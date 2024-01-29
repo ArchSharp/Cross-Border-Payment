@@ -1,0 +1,68 @@
+# ASP.NET Core
+# Build and test ASP.NET Core projects targeting .NET Core.
+# ASP.NET Core
+# Build and test ASP.NET Core projects targeting .NET Core.
+# Add steps that run tests, create a NuGet package, deploy, and more:
+# https://docs.microsoft.com/azure/devops/pipelines/languages/dotnet-core
+
+# trigger:
+# - dev
+
+pool:
+  vmImage: ubuntu-latest
+
+steps:
+- task: DotNetCoreCLI@2
+  inputs:
+    command: 'restore'
+    projects: 'Identity.csproj'
+    feedsToUse: 'select'
+  enabled: true
+
+# - task: UseDotNet@2
+#   inputs:
+#     packageType: 'sdk'
+#     useGlobalJson: true
+#     vsVersion: '5.0'
+#   enabled: true
+
+- task: DotNetCoreCLI@2
+  displayName: Build
+  inputs:
+    command: 'build'
+    projects: 'Identity.csproj'
+    arguments: '--configuration $(BuildConfiguration)'
+  enabled: true
+
+- task: DotNetCoreCLI@2
+  displayName: Test
+  inputs:
+    command: test
+    projects: '$(Parameters.TestProjects)'
+    arguments: '--configuration $(BuildConfiguration)'
+  enabled: true
+
+- task: DotNetCoreCLI@2
+  displayName: Publish
+  inputs:
+    command: publish
+    publishWebProjects: True
+    arguments: '--configuration $(BuildConfiguration) --output $(build.artifactstagingdirectory)'
+    zipAfterPublish: True
+  enabled: true
+
+- task: PublishBuildArtifacts@1
+  displayName: 'Publish Artifact'
+  inputs:
+    PathtoPublish: '$(build.artifactstagingdirectory)'
+  condition: succeededOrFailed()
+  enabled: true
+
+- task: Docker@2
+  inputs:
+    containerRegistry: 'westpayglobal container registry'
+    repository: 'Identity'
+    command: 'buildAndPush'
+    Dockerfile: 'Dockerfile'
+    tags: 'latest'
+  enabled: true
